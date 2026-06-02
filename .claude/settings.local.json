@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(ls ~/.claude/skills/ 2>/dev/null || echo \"no skills dir\")",
+      "Bash(mkdir -p ~/.claude/skills/brainstorming)",
+      "Bash(mkdir -p ~/.claude/plugins/cache/local/brainstorming/1.0.0/.claude-plugin)",
+      "Bash(mkdir -p ~/.claude/plugins/cache/local/brainstorming/1.0.0/skills/brainstorming)",
+      "Bash(cp ~/.claude/skills/brainstorming/SKILL.md ~/.claude/plugins/cache/local/brainstorming/1.0.0/skills/brainstorming/SKILL.md)",
+      "Bash(mkdir -p ~/.claude/plugins/cache/local/brainstorming/1.0.0/commands)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(curl -s https://api.github.com/repos/coreyhaines31/marketingskills/contents/)",
+      "Bash(curl -s https://api.github.com/repos/coreyhaines31/marketingskills/contents/.claude-plugin)",
+      "Bash(curl -s https://raw.githubusercontent.com/coreyhaines31/marketingskills/main/.claude-plugin/marketplace.json)",
+      "Bash(python3 -m json.tool)",
+      "Bash(claude marketplace *)",
+      "Bash(claude plugin *)",
+      "Bash(claude plugins *)",
+      "Bash(gh api *)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(mkdir -p /Users/irina.ivchenkova/Documents/linguaframe/.claude/skills/excalidraw-diagram-skill/references)",
+      "Bash(curl -sL https://raw.githubusercontent.com/coleam00/excalidraw-diagram-skill/main/SKILL.md -o /Users/irina.ivchenkova/Documents/linguaframe/.claude/skills/excalidraw-diagram-skill/SKILL.md)",
+      "Bash(curl -sL https://raw.githubusercontent.com/coleam00/excalidraw-diagram-skill/main/references/color-palette.md -o /Users/irina.ivchenkova/Documents/linguaframe/.claude/skills/excalidraw-diagram-skill/references/color-palette.md)",
+      "Bash(curl -sL https://raw.githubusercontent.com/coleam00/excalidraw-diagram-skill/main/references/element-templates.md -o /Users/irina.ivchenkova/Documents/linguaframe/.claude/skills/excalidraw-diagram-skill/references/element-templates.md)",
+      "Bash(curl -sL https://raw.githubusercontent.com/coleam00/excalidraw-diagram-skill/main/references/json-schema.md -o /Users/irina.ivchenkova/Documents/linguaframe/.claude/skills/excalidraw-diagram-skill/references/json-schema.md)",
+      "Bash(curl -sL https://raw.githubusercontent.com/coleam00/excalidraw-diagram-skill/main/references/pyproject.toml -o /Users/irina.ivchenkova/Documents/linguaframe/.claude/skills/excalidraw-diagram-skill/references/pyproject.toml)",
+      "Bash(uv sync *)",
+      "Bash(curl -LsSf https://astral.sh/uv/install.sh)",
+      "Bash(sh)",
+      "Bash(~/.local/bin/uv sync *)",
+      "Bash(~/.local/bin/uv run *)",
+      "Bash(ls /Users/irina.ivchenkova/.claude/skills/ 2>/dev/null || echo \"no global skills dir\" *)"
+    ]
+  }
+}

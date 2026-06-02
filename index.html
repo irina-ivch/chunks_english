@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>chunks_english — Репетитор английского через YouTube</title>
+<style>
+  /* ── Reset & base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #232738;
+    --border: #2e3348;
+    --accent: #6c63ff;
+    --accent2: #ff6584;
+    --accent3: #43d9ad;
+    --text: #e2e8f0;
+    --text-muted: #8892a4;
+    --correct: #43d9ad;
+    --wrong: #ff6584;
+    --radius: 12px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* ── Layout ── */
+  .app { max-width: 860px; margin: 0 auto; padding: 24px 16px 80px; }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-icon {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .logo h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.5px; }
+  .logo span { color: var(--accent); }
+  .header-actions { display: flex; gap: 8px; }
+
+  /* ── Buttons ── */
+  .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.2s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: #7c73ff; transform: translateY(-1px); }
+  .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+  .btn-ghost:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+  .btn-danger { background: transparent; color: var(--wrong); border: 1px solid var(--wrong); }
+  .btn-danger:hover:not(:disabled) { background: var(--wrong); color: #fff; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .card-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  /* ── Step indicator ── */
+  .steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 28px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .step {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .step-num {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem;
+    transition: all 0.3s;
+  }
+  .step.active .step-num { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .step.done .step-num { background: var(--accent3); border-color: var(--accent3); color: var(--bg); }
+  .step.active { color: var(--text); }
+  .step.done { color: var(--accent3); }
+  .step-sep { flex: 1; min-width: 20px; height: 2px; background: var(--border); margin: 0 6px; }
+  .step-sep.done { background: var(--accent3); }
+
+  /* ── Forms ── */
+  .form-group { margin-bottom: 16px; }
+  label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 500; }
+  input[type="text"], select, textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 11px 14px;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input[type="text"]:focus, select:focus, textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(108,99,255,0.15);
+  }
+  select option { background: var(--surface2); }
+  .form-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: end; }
+
+  /* ── Level badge ── */
+  .level-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: var(--accent);
+    color: #fff;
+    margin-left: 6px;
+  }
+  .level-B1 { background: #3b82f6; }
+  .level-B2 { background: #8b5cf6; }
+  .level-C1 { background: #ec4899; }
+  .level-C2 { background: #ef4444; }
+
+  /* ── Word list ── */
+  .word-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 10px;
+  }
+  .word-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .word-card:hover { border-color: var(--accent); }
+  .word-card.selected {
+    border-color: var(--accent3);
+    background: rgba(67,217,173,0.06);
+  }
+  .word-card .wc-check {
+    position: absolute; top: 10px; right: 10px;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    transition: all 0.2s;
+  }
+  .word-card.selected .wc-check { background: var(--accent3); border-color: var(--accent3); color: var(--bg); }
+  .word-card .wc-word { font-weight: 700; font-size: 1rem; margin-bottom: 2px; }
+  .word-card .wc-trans { color: var(--text-muted); font-size: 0.82rem; }
+  .word-card .wc-chunk { color: var(--accent); font-size: 0.78rem; margin-top: 4px; font-style: italic; }
+  .word-card .wc-example { color: var(--text-muted); font-size: 0.78rem; margin-top: 6px; line-height: 1.4; }
+
+  .select-controls { display: flex; gap: 8px; margin-bottom: 14px; align-items: center; }
+  .select-controls span { color: var(--text-muted); font-size: 0.85rem; margin-left: auto; }
+
+  /* ── Chat ── */
+  .chat-container {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 220px);
+    min-height: 500px;
+  }
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .msg {
+    display: flex;
+    gap: 10px;
+    max-width: 85%;
+    animation: fadeUp 0.25s ease;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .msg-tutor { align-self: flex-start; }
+  .msg-user { align-self: flex-end; flex-direction: row-reverse; }
+  .msg-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .msg-tutor .msg-avatar { background: linear-gradient(135deg, var(--accent), var(--accent2)); }
+  .msg-user .msg-avatar { background: var(--surface2); border: 1px solid var(--border); }
+  .msg-bubble {
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+  }
+  .msg-tutor .msg-bubble {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-top-left-radius: 4px;
+  }
+  .msg-user .msg-bubble {
+    background: var(--accent);
+    color: #fff;
+    border-top-right-radius: 4px;
+  }
+  .msg-bubble.correct { border-left: 3px solid var(--correct); }
+  .msg-bubble.wrong { border-left: 3px solid var(--wrong); }
+
+  .chat-input-area {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+  }
+  .chat-input-area textarea {
+    flex: 1;
+    margin: 0;
+    border-radius: 8px;
+    min-height: 42px;
+    max-height: 120px;
+    padding: 10px 14px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+    resize: none;
+    overflow-y: auto;  /* скролл внутри textarea при переполнении */
+    line-height: 1.5;
+  }
+  .chat-input-area textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(108,99,255,0.15);
+  }
+
+  /* ── Typing indicator ── */
+  .typing {
+    display: flex; align-items: center; gap: 5px;
+    padding: 8px 12px;
+  }
+  .typing span {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    animation: bounce 1.2s infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce {
+    0%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-6px); }
+  }
+
+  /* ── Progress bar ── */
+  .progress-bar {
+    height: 4px;
+    background: var(--surface2);
+    border-radius: 2px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent3));
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+
+  /* ── Vocabulary ── */
+  .vocab-empty { text-align: center; color: var(--text-muted); padding: 32px; }
+  .vocab-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+  .vocab-item:last-child { border-bottom: none; }
+  .vocab-word { font-weight: 600; }
+  .vocab-info { flex: 1; margin-left: 8px; }
+  .vocab-trans { font-size: 0.82rem; color: var(--text-muted); }
+  .vocab-source { font-size: 0.72rem; color: var(--accent); margin-top: 2px; }
+
+  /* ── Notification toast ── */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 0.88rem;
+    transition: transform 0.3s ease;
+    z-index: 1000;
+    white-space: nowrap;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+  #toast.success { border-color: var(--correct); color: var(--correct); }
+  #toast.error { border-color: var(--wrong); color: var(--wrong); }
+
+  /* ── Spinner ── */
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Section visibility ── */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ── Repeat mode banner ── */
+  .repeat-banner {
+    background: rgba(108,99,255,0.12);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.88rem;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  /* ── Misc ── */
+  .text-muted { color: var(--text-muted); }
+  .mt-8 { margin-top: 8px; }
+  .mt-12 { margin-top: 12px; }
+  .mt-16 { margin-top: 16px; }
+  .flex { display: flex; }
+  .gap-8 { gap: 8px; }
+  .items-center { align-items: center; }
+  .justify-between { justify-content: space-between; }
+  .w-full { width: 100%; }
+
+  /* ── Theory page ── */
+  .theory-word {
+    border-bottom: 1px solid var(--border);
+    padding: 24px 0;
+  }
+  .theory-word:first-child { padding-top: 0; }
+  .theory-word:last-child { border-bottom: none; padding-bottom: 0; }
+
+  .tw-header {
+    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .tw-word { font-size: 1.4rem; font-weight: 700; }
+  .tw-transcription { color: var(--text-muted); font-size: 0.9rem; font-family: monospace; }
+  .tw-translation { font-size: 1rem; color: var(--accent3); font-weight: 600; }
+
+  .tw-chunk {
+    display: inline-block;
+    background: rgba(108,99,255,0.12);
+    border: 1px solid rgba(108,99,255,0.3);
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 0.82rem;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+
+  .tw-examples { display: flex; flex-direction: column; gap: 8px; }
+
+  .tw-example {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    border-left: 3px solid var(--border);
+  }
+  .tw-example.from-video { border-left-color: var(--accent); }
+  .tw-example-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .tw-example.from-video .tw-example-label { color: var(--accent); }
+
+  /* Grammar */
+  .grammar-item {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 0;
+  }
+  .grammar-item:first-child { padding-top: 0; }
+  .grammar-item:last-child { border-bottom: none; padding-bottom: 0; }
+
+  .gi-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; }
+  .gi-explanation { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px; line-height: 1.6; }
+  .gi-structure {
+    display: inline-block;
+    background: rgba(67,217,173,0.08);
+    border: 1px solid rgba(67,217,173,0.25);
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: var(--accent3);
+    margin-bottom: 12px;
+  }
+  .gi-examples { display: flex; flex-direction: column; gap: 6px; }
+  .gi-example {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 0.88rem;
+    border-left: 3px solid var(--accent3);
+  }
+
+  /* ── Grammar highlight ── */
+  .hl {
+    background: rgba(108,99,255,0.2);
+    border-radius: 3px;
+    padding: 1px 4px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ── Chat chunks card ── */
+  .chat-chunk-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.84rem;
+  }
+  .chat-chunk-row:last-child { border-bottom: none; }
+  .chat-chunk-word { font-weight: 600; color: var(--text); }
+  .chat-chunk-meaning { color: var(--text-muted); }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    .word-grid { grid-template-columns: 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🎬</div>
+      <h1>Lingua<span>Frame</span></h1>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-ghost btn-sm" onclick="showVocab()">📚 Словарь</button>
+      <button class="btn btn-ghost btn-sm" onclick="resetAll()">↩ Начать заново</button>
+    </div>
+  </header>
+
+  <!-- Step indicator -->
+  <div class="steps" id="stepsBar">
+    <div class="step active" id="step1">
+      <div class="step-num">1</div> Видео
+    </div>
+    <div class="step-sep" id="sep1"></div>
+    <div class="step" id="step2">
+      <div class="step-num">2</div> Слова
+    </div>
+    <div class="step-sep" id="sep2"></div>
+    <div class="step" id="step3">
+      <div class="step-num">3</div> Теория
+    </div>
+    <div class="step-sep" id="sep3"></div>
+    <div class="step" id="step4">
+      <div class="step-num">4</div> Свободный чат
+    </div>
+  </div>
+
+  <!-- ── SECTION 1: Input ── -->
+  <div class="section active" id="sec-input">
+    <div class="card">
+      <div class="card-title">🎥 Выбери видео</div>
+      <div class="form-group">
+        <label>Ссылка на YouTube</label>
+        <input type="text" id="ytUrl" placeholder="https://www.youtube.com/watch?v=..." />
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="margin:0">
+          <label>Мой уровень английского</label>
+          <select id="userLevel">
+            <option value="A1">A1 — Начинающий</option>
+            <option value="A2">A2 — Элементарный</option>
+            <option value="B1" selected>B1 — Средний</option>
+            <option value="B2">B2 — Выше среднего</option>
+            <option value="C1">C1 — Продвинутый</option>
+            <option value="C2">C2 — Свободное владение</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="btnLoad" onclick="loadVideo()">
+          Загрузить видео
+        </button>
+      </div>
+      <p class="text-muted mt-12" style="font-size:0.82rem">
+        Совет: выбирай видео с английскими субтитрами (Ted Talks, подкасты, влоги).
+      </p>
+    </div>
+
+    <!-- Recent videos -->
+    <div id="recentSection" style="display:none">
+      <div class="card">
+        <div class="card-title">🕐 Недавние видео</div>
+        <div id="recentList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 2: Words ── -->
+  <div class="section" id="sec-words">
+    <div id="repeatBanner" style="display:none" class="repeat-banner">
+      🔄 Это видео уже изучалось. Показаны слова из прошлой сессии.
+    </div>
+    <div class="card">
+      <div class="card-title">📋 Полезные выражения из видео</div>
+      <p class="text-muted" style="font-size:0.85rem;margin-bottom:14px">
+        Отметь чанки, которые хочешь изучить. Рекомендуем 5–10 за раз.
+      </p>
+      <div class="select-controls">
+        <button class="btn btn-ghost btn-sm" onclick="selectAll()">✓ Все</button>
+        <button class="btn btn-ghost btn-sm" onclick="selectNone()">✕ Снять</button>
+        <span id="selectedCount">0 выбрано</span>
+      </div>
+      <div class="word-grid" id="wordGrid"></div>
+    </div>
+    <div style="display:flex; gap:10px; justify-content:space-between; align-items:center; margin-top:16px">
+      <div style="display:flex; align-items:center; gap:10px">
+        <button class="btn btn-ghost" onclick="goBack(1)">← Назад</button>
+        <div style="display:flex; align-items:center; gap:8px">
+          <span style="font-size:0.85rem; color:var(--text-muted)">Язык урока:</span>
+          <button id="langRu" class="btn btn-sm btn-primary" onclick="setLang('ru')" style="padding:5px 12px">🇷🇺 Русский</button>
+          <button id="langEn" class="btn btn-sm btn-ghost" onclick="setLang('en')" style="padding:5px 12px">🇬🇧 English</button>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btnLesson" onclick="startTheory()" disabled>
+        Изучить теорию →
+      </button>
+    </div>
+  </div>
+
+  <!-- ── SECTION 3: Theory ── -->
+  <div class="section" id="sec-lesson">
+    <div id="theoryLoading" style="text-align:center;padding:60px;color:var(--text-muted)">
+      <span class="spinner"></span>
+      <p style="margin-top:16px">Готовлю теорию по выбранным словам...</p>
+    </div>
+    <div id="theoryContent" style="display:none">
+
+      <!-- Words section -->
+      <div class="card">
+        <div class="card-title">📖 Слова и выражения</div>
+        <div id="theoryWords"></div>
+      </div>
+
+      <!-- Grammar section -->
+      <div class="card" style="margin-top:20px">
+        <div class="card-title">📐 Грамматика из видео</div>
+        <div id="theoryGrammar"></div>
+      </div>
+
+      <div style="display:flex;gap:10px;justify-content:space-between;margin-top:20px">
+        <button class="btn btn-ghost" onclick="goBack(2)">← К словам</button>
+        <button class="btn btn-primary" onclick="startFreeChat()">Обсудить с репетитором →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 4: Free Chat ── -->
+  <div class="section" id="sec-chat">
+    <div class="card" style="padding:14px 20px">
+      <div class="flex items-center justify-between">
+        <div class="card-title" style="margin:0">💬 Свободный чат с репетитором</div>
+        <button class="btn btn-ghost btn-sm" onclick="goBack(3)">← К теории</button>
+      </div>
+    </div>
+
+    <!-- Chunks reference card -->
+    <div id="chatChunksCard" style="display:none;padding:10px 16px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toggleChunksCard()">
+        <span style="font-size:0.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em">📋 Изученные чанки</span>
+        <span id="chunksCardArrow" style="color:var(--text-muted);font-size:0.75rem">▲</span>
+      </div>
+      <div id="chatChunksList" style="margin-top:8px"></div>
+    </div>
+
+    <div class="chat-container">
+      <div class="chat-messages" id="freeChatMessages"></div>
+      <div class="chat-input-area">
+        <textarea id="freeChatInput" placeholder="Напиши что-нибудь... (Shift+Enter — новая строка)" onkeydown="freeChatKeydown(event)" rows="1"></textarea>
+        <button id="btnFreeChat2" onclick="sendFreeChatMessage()" title="Отправить" style="width:42px;height:42px;min-width:42px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">↑</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SECTION vocab ── -->
+  <div class="section" id="sec-vocab">
+    <div class="card">
+      <div class="flex items-center justify-between" style="margin-bottom:14px">
+        <div class="card-title" style="margin:0">📚 Личный словарь</div>
+        <div class="flex gap-8">
+          <button class="btn btn-danger btn-sm" onclick="clearVocab()">🗑 Очистить</button>
+          <button class="btn btn-ghost btn-sm" onclick="closeVocab()">✕ Закрыть</button>
+        </div>
+      </div>
+      <div id="vocabList"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────────
+const state = {
+  videoId: null,
+  transcript: null,
+  level: 'B1',
+  lessonLanguage: 'ru',
+  chunks: [],
+  selectedChunks: [],
+  videoTopic: '',
+  freeChatMessages: [],
+  systemPrompt: '',
+  prevSection: null,
+};
+
+// ── LocalStorage helpers ───────────────────────────────────────────────────────
+const LS_VOCAB = 'lf_vocab';
+const LS_SESSIONS = 'lf_sessions';
+
+function loadVocab() {
+  try { return JSON.parse(localStorage.getItem(LS_VOCAB) || '[]'); }
+  catch { return []; }
+}
+function saveVocab(v) { localStorage.setItem(LS_VOCAB, JSON.stringify(v)); }
+
+function loadSessions() {
+  try { return JSON.parse(localStorage.getItem(LS_SESSIONS) || '{}'); }
+  catch { return {}; }
+}
+function saveSession(videoId, data) {
+  const s = loadSessions();
+  s[videoId] = { ...data, ts: Date.now() };
+  localStorage.setItem(LS_SESSIONS, JSON.stringify(s));
+}
+
+// ── Section navigation ─────────────────────────────────────────────────────────
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function setStep(n) {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('step' + i);
+    el.classList.remove('active', 'done');
+    if (i < n) el.classList.add('done');
+    else if (i === n) el.classList.add('active');
+
+    if (i < 4) {
+      const sep = document.getElementById('sep' + i);
+      sep.classList.toggle('done', i < n);
+    }
+  }
+}
+
+function goBack(toStep) {
+  if (toStep === 1) { showSection('sec-input'); setStep(1); }
+  else if (toStep === 2) { showSection('sec-words'); setStep(2); }
+  else if (toStep === 3) {
+    showSection('sec-lesson');
+    setStep(3);
+    document.getElementById('theoryLoading').style.display = 'none';
+    document.getElementById('theoryContent').style.display = 'block';
+  }
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = type ? `show ${type}` : 'show';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ── API calls ──────────────────────────────────────────────────────────────────
+const API_BASE = window.location.protocol === 'file:'
+  ? 'http://localhost:8000'
+  : '';
+
+async function api(path, body) {
+  const res = await fetch(API_BASE + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Ошибка сервера (${res.status}). Проверь терминал с uvicorn.`);
+  }
+  if (!res.ok) throw new Error(data.detail || `Ошибка сервера (${res.status})`);
+  return data;
+}
+
+// ── Step 1: Load video ─────────────────────────────────────────────────────────
+async function loadVideo() {
+  const url = document.getElementById('ytUrl').value.trim();
+  const level = document.getElementById('userLevel').value;
+  if (!url) { toast('Введи ссылку на видео', 'error'); return; }
+
+  state.level = level;
+  const btn = document.getElementById('btnLoad');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Загружаю...';
+
+  try {
+    const res = await api('/api/transcript', { url });
+    state.videoId = res.video_id;
+    state.transcript = res.transcript;
+
+    // Check if repeat session
+    const sessions = loadSessions();
+    const prev = sessions[state.videoId];
+
+    if (prev && prev.chunks && prev.chunks.length > 0) {
+      document.getElementById('repeatBanner').style.display = 'flex';
+      state.chunks = prev.chunks;
+      renderChunks();
+    } else {
+      document.getElementById('repeatBanner').style.display = 'none';
+      await analyzeChunks();
+    }
+
+    saveRecentVideo(url, level, state.videoId);
+    showSection('sec-words');
+    setStep(2);
+  } catch (e) {
+    toast(e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Загрузить видео';
+  }
+}
+
+async function analyzeChunks() {
+  const wordGrid = document.getElementById('wordGrid');
+  wordGrid.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted)"><span class="spinner"></span><br><br>Ищу полезные выражения и чанки...</div>';
+
+  const res = await api('/api/analyze', {
+    transcript: state.transcript,
+    level: state.level,
+    video_id: state.videoId,
+  });
+
+  state.chunks = res.chunks;
+  saveSession(state.videoId, { chunks: state.chunks, level: state.level });
+  renderChunks();
+}
+
+// ── Step 2: Chunks ─────────────────────────────────────────────────────────────
+const TYPE_LABELS = {
+  fixed_expression: 'Выражение',
+  collocation: 'Коллокация',
+  phrasal_verb: 'Фразовый глагол',
+  discourse_marker: 'Дискурс-маркер',
+  idiom: 'Идиома',
+  semi_fixed: 'Полуфиксированный',
+};
+const REGISTER_LABELS = { formal: 'формальный', neutral: 'нейтральный', informal: 'разговорный' };
+
+function renderChunks() {
+  const grid = document.getElementById('wordGrid');
+  if (!state.chunks.length) {
+    grid.innerHTML = '<p class="text-muted" style="padding:20px">Чанков выше уровня не найдено.</p>';
+    return;
+  }
+  grid.innerHTML = '';
+  state.chunks.forEach((c, i) => {
+    const card = document.createElement('div');
+    card.className = 'word-card';
+    card.dataset.idx = i;
+    card.innerHTML = `
+      <div class="wc-check">✓</div>
+      <div class="wc-word">${esc(c.chunk)} <span class="level-badge level-${c.level}">${c.level}</span></div>
+      <div class="wc-trans">${esc(c.meaning_ru)}</div>
+      <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+        <span style="font-size:0.72rem;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:2px 7px;color:var(--text-muted)">${esc(TYPE_LABELS[c.type] || c.type)}</span>
+        <span style="font-size:0.72rem;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:2px 7px;color:var(--text-muted)">${esc(REGISTER_LABELS[c.register] || c.register)}</span>
+      </div>
+      <div class="wc-example" style="margin-top:8px">${esc(c.original_sentence)}</div>
+    `;
+    card.onclick = () => toggleChunk(i);
+    grid.appendChild(card);
+  });
+  updateSelectedCount();
+}
+
+function toggleChunk(i) {
+  document.querySelectorAll('.word-card')[i].classList.toggle('selected');
+  updateSelectedCount();
+}
+
+function selectAll() {
+  document.querySelectorAll('.word-card').forEach(c => c.classList.add('selected'));
+  updateSelectedCount();
+}
+function selectNone() {
+  document.querySelectorAll('.word-card').forEach(c => c.classList.remove('selected'));
+  updateSelectedCount();
+}
+
+function updateSelectedCount() {
+  const n = document.querySelectorAll('.word-card.selected').length;
+  document.getElementById('selectedCount').textContent = `${n} выбрано`;
+  document.getElementById('btnLesson').disabled = n === 0;
+  state.selectedChunks = [...document.querySelectorAll('.word-card.selected')]
+    .map(c => state.chunks[parseInt(c.dataset.idx)]);
+}
+
+// ── Language selector ──────────────────────────────────────────────────────────
+function setLang(lang) {
+  state.lessonLanguage = lang;
+  document.getElementById('langRu').className = `btn btn-sm ${lang === 'ru' ? 'btn-primary' : 'btn-ghost'}`;
+  document.getElementById('langEn').className = `btn btn-sm ${lang === 'en' ? 'btn-primary' : 'btn-ghost'}`;
+}
+
+// ── Step 3: Theory ────────────────────────────────────────────────────────────
+async function startTheory() {
+  if (!state.selectedChunks.length) { toast('Выбери хотя бы один чанк', 'error'); return; }
+
+  showSection('sec-lesson');
+  setStep(3);
+  document.getElementById('theoryLoading').style.display = 'block';
+  document.getElementById('theoryContent').style.display = 'none';
+
+  try {
+    const res = await api('/api/generate-theory', {
+      transcript: state.transcript,
+      level: state.level,
+      chunks: state.selectedChunks,
+      video_id: state.videoId,
+      lesson_language: state.lessonLanguage,
+    });
+
+    state.systemPrompt = res.system_prompt;
+    state.videoTopic = res.video_topic || '';
+    addChunksToVocab(state.selectedChunks, state.videoId);
+    renderTheory(res);
+  } catch (e) {
+    document.getElementById('theoryLoading').innerHTML =
+      `<p style="color:var(--wrong)">${esc(e.message)}</p>`;
+    toast(e.message, 'error');
+  }
+}
+
+function renderTheory(data) {
+  document.getElementById('theoryLoading').style.display = 'none';
+  document.getElementById('theoryContent').style.display = 'block';
+
+  // ── Chunks ──
+  const wordsEl = document.getElementById('theoryWords');
+  wordsEl.innerHTML = (data.chunks || []).map(c => `
+    <div class="theory-word">
+      <div class="tw-header">
+        <span class="tw-word">${esc(c.chunk)}</span>
+        <span class="level-badge level-${c.level}">${c.level}</span>
+        <span class="tw-translation">${esc(c.meaning_ru)}</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+        <span class="tw-chunk">🏷 ${esc(TYPE_LABELS[c.type] || c.type)}</span>
+        <span class="tw-chunk" style="background:rgba(255,101,132,0.08);border-color:rgba(255,101,132,0.3);color:var(--accent2)">🎭 ${esc(REGISTER_LABELS[c.register] || c.register)}</span>
+      </div>
+      <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px;font-style:italic">💡 ${esc(c.why_useful)}</p>
+      ${c.similar_chunks && c.similar_chunks.length ? `
+        <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:12px">
+          Похожие: ${c.similar_chunks.map(s => `<code style="background:var(--surface2);padding:1px 6px;border-radius:4px">${esc(s)}</code>`).join(' ')}
+        </p>` : ''}
+      <div class="tw-examples">
+        <div class="tw-example from-video">
+          <div class="tw-example-label">🎬 Из видео</div>
+          ${esc(c.original_sentence)}
+        </div>
+        ${(c.other_examples || []).map(ex => `
+          <div class="tw-example">
+            <div class="tw-example-label">Пример</div>
+            ${esc(ex)}
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  // ── Grammar ──
+  const grammarEl = document.getElementById('theoryGrammar');
+  grammarEl.innerHTML = (data.grammar || []).map(g => `
+    <div class="grammar-item">
+      <div class="gi-title">${esc(g.title)}</div>
+      <div class="gi-explanation">${esc(g.explanation_ru)}</div>
+      <div class="gi-structure">${esc(g.structure)}</div>
+      <div class="gi-examples">
+        ${(g.examples || []).map(ex => `<div class="gi-example">${esc(ex)}</div>`).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Step 4: Free Chat ──────────────────────────────────────────────────────────
+let chunksCardOpen = true;
+function toggleChunksCard() {
+  chunksCardOpen = !chunksCardOpen;
+  document.getElementById('chatChunksList').style.display = chunksCardOpen ? 'block' : 'none';
+  document.getElementById('chunksCardArrow').textContent = chunksCardOpen ? '▲' : '▼';
+}
+
+function renderChatChunksCard() {
+  if (!state.selectedChunks.length) return;
+  const card = document.getElementById('chatChunksCard');
+  const list = document.getElementById('chatChunksList');
+  card.style.display = 'block';
+  list.innerHTML = state.selectedChunks.map(c => `
+    <div class="chat-chunk-row">
+      <span class="chat-chunk-word">${esc(c.chunk)}</span>
+      <span class="level-badge level-${c.level}" style="font-size:0.65rem">${c.level}</span>
+      <span class="chat-chunk-meaning">— ${esc(c.meaning_ru)}</span>
+    </div>
+  `).join('');
+}
+
+async function startFreeChat() {
+  showSection('sec-chat');
+  setStep(4);
+  renderChatChunksCard();
+  const msgs = document.getElementById('freeChatMessages');
+
+  if (!msgs.children.length) {
+    const typingEl = appendTyping(msgs);
+    try {
+      const res = await api('/api/chat', {
+        messages: [],
+        system_prompt: state.systemPrompt,
+      });
+      typingEl.remove();
+      appendMessage('tutor', res.reply, msgs);
+      state.freeChatMessages.push({ role: 'assistant', content: res.reply });
+    } catch (e) {
+      typingEl.remove();
+      const fallback = state.lessonLanguage === 'en'
+        ? `Hey! 👋 Ready to practice? Let's work on what we learned!`
+        : `Привет! 👋 Готов(а) заниматься? Давай попрактикуемся с изученными чанками!`;
+      appendMessage('tutor', fallback, msgs);
+    }
+  }
+
+  document.getElementById('freeChatInput').focus();
+}
+
+async function sendFreeChatMessage() {
+  const input = document.getElementById('freeChatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  input.style.height = 'auto';
+
+  const msgs = document.getElementById('freeChatMessages');
+  appendMessage('user', text, msgs);
+  state.freeChatMessages.push({ role: 'user', content: text });
+
+  const btn = document.getElementById('btnFreeChat2');
+  btn.disabled = true;
+  input.disabled = true;
+
+  const typingEl = appendTyping(msgs);
+
+  try {
+    const res = await api('/api/chat', {
+      messages: state.freeChatMessages,
+      system_prompt: state.systemPrompt,
+    });
+    typingEl.remove();
+    appendMessage('tutor', res.reply, msgs);
+    state.freeChatMessages.push({ role: 'assistant', content: res.reply });
+  } catch (e) {
+    typingEl.remove();
+    toast(e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    input.disabled = false;
+    input.focus();
+  }
+}
+
+function freeChatKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendFreeChatMessage();
+  }
+  // auto-grow textarea
+  setTimeout(() => {
+    const ta = document.getElementById('freeChatInput');
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
+  }, 0);
+}
+
+// ── Vocabulary ─────────────────────────────────────────────────────────────────
+function addChunksToVocab(chunks, videoId) {
+  const vocab = loadVocab();
+  chunks.forEach(c => {
+    if (!vocab.find(v => v.chunk === c.chunk)) {
+      vocab.push({ ...c, videoId, addedAt: Date.now() });
+    }
+  });
+  saveVocab(vocab);
+}
+
+function showVocab() {
+  state.prevSection = document.querySelector('.section.active')?.id;
+  showSection('sec-vocab');
+  renderVocabList();
+}
+
+function closeVocab() {
+  showSection(state.prevSection || 'sec-input');
+}
+
+function renderVocabList() {
+  const vocab = loadVocab();
+  const el = document.getElementById('vocabList');
+  if (!vocab.length) {
+    el.innerHTML = '<div class="vocab-empty">📭 Словарь пустой.<br>Слова добавляются автоматически во время урока.</div>';
+    return;
+  }
+  // Sort newest first
+  vocab.sort((a, b) => b.addedAt - a.addedAt);
+  el.innerHTML = vocab.map(v => `
+    <div class="vocab-item">
+      <div style="flex:1">
+        <div class="vocab-word">${esc(v.chunk || v.word || '')} <span class="level-badge level-${v.level}">${v.level}</span></div>
+        <div class="vocab-trans">${esc(v.meaning_ru || v.translation_ru || '')}</div>
+        ${v.type ? `<div style="font-size:0.72rem;color:var(--accent);margin-top:2px">${esc(TYPE_LABELS[v.type] || v.type)}</div>` : ''}
+        <div class="vocab-source">${v.videoId ? `📹 ${v.videoId}` : ''}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function clearVocab() {
+  if (!confirm('Очистить весь словарь?')) return;
+  saveVocab([]);
+  renderVocabList();
+  toast('Словарь очищён');
+}
+
+// ── Recent videos ──────────────────────────────────────────────────────────────
+function saveRecentVideo(url, level, videoId) {
+  const key = 'lf_recent';
+  let recent = [];
+  try { recent = JSON.parse(localStorage.getItem(key) || '[]'); } catch {}
+  recent = recent.filter(r => r.videoId !== videoId);
+  recent.unshift({ url, level, videoId, ts: Date.now() });
+  recent = recent.slice(0, 5);
+  localStorage.setItem(key, JSON.stringify(recent));
+  renderRecent();
+}
+
+function renderRecent() {
+  const key = 'lf_recent';
+  let recent = [];
+  try { recent = JSON.parse(localStorage.getItem(key) || '[]'); } catch {}
+  const sec = document.getElementById('recentSection');
+  const list = document.getElementById('recentList');
+  if (!recent.length) { sec.style.display = 'none'; return; }
+  sec.style.display = 'block';
+  list.innerHTML = recent.map(r => `
+    <div class="vocab-item" style="cursor:pointer" onclick="loadFromRecent('${esc(r.url)}','${r.level}')">
+      <div style="flex:1">
+        <div style="font-size:0.88rem">${esc(r.url.slice(0, 60))}${r.url.length > 60 ? '…' : ''}</div>
+        <div class="vocab-trans">Уровень: ${r.level} · ${timeAgo(r.ts)}</div>
+      </div>
+      <span class="level-badge level-${r.level}">${r.level}</span>
+    </div>
+  `).join('');
+}
+
+function loadFromRecent(url, level) {
+  document.getElementById('ytUrl').value = url;
+  document.getElementById('userLevel').value = level;
+  loadVideo();
+}
+
+function timeAgo(ts) {
+  const d = Date.now() - ts;
+  if (d < 60000) return 'только что';
+  if (d < 3600000) return Math.floor(d / 60000) + ' мин. назад';
+  if (d < 86400000) return Math.floor(d / 3600000) + ' ч. назад';
+  return Math.floor(d / 86400000) + ' д. назад';
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function renderText(text) {
+  return esc(text)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code style="background:var(--surface2);padding:1px 5px;border-radius:3px;font-family:monospace">$1</code>')
+    .replace(/\[hl\]([\s\S]+?)\[\/hl\]/g, '<span class="hl">$1</span>')
+    .replace(/^---+$/gm, '<hr style="border-color:var(--border);margin:8px 0">')
+    .replace(/\n/g, '<br>');
+}
+
+function appendMessage(role, text, container, cls = '') {
+  const div = document.createElement('div');
+  div.className = `msg msg-${role}`;
+  div.innerHTML = `
+    <div class="msg-avatar">${role === 'tutor' ? '🤖' : '👤'}</div>
+    <div class="msg-bubble ${cls}">${renderText(text)}</div>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+function appendTyping(container) {
+  const div = document.createElement('div');
+  div.className = 'msg msg-tutor';
+  div.innerHTML = `
+    <div class="msg-avatar">🤖</div>
+    <div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+function esc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function resetAll() {
+  if (!confirm('Начать заново? Текущий прогресс будет сброшен.')) return;
+  Object.assign(state, {
+    videoId: null, transcript: null, level: 'B1',
+    chunks: [], selectedChunks: [],
+    freeChatMessages: [], systemPrompt: '',
+  });
+  document.getElementById('ytUrl').value = '';
+  document.getElementById('freeChatMessages').innerHTML = '';
+  document.getElementById('theoryWords').innerHTML = '';
+  document.getElementById('theoryGrammar').innerHTML = '';
+  document.getElementById('theoryContent').style.display = 'none';
+  showSection('sec-input');
+  setStep(1);
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+renderRecent();
+</script>
+</body>
+</html>

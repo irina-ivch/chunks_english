@@ -203,9 +203,27 @@ async def health():
     return {"status": "ok"}
 
 
+def _make_api() -> YouTubeTranscriptApi:
+    """Create YouTubeTranscriptApi, passing cookies file if available."""
+    cookies_path = os.getenv("YOUTUBE_COOKIES_PATH")
+    if cookies_path and os.path.isfile(cookies_path):
+        return YouTubeTranscriptApi(cookie_path=cookies_path)
+
+    # Fallback: write inline cookie content from env var to a temp file
+    cookies_content = os.getenv("YOUTUBE_COOKIES")
+    if cookies_content:
+        import tempfile
+        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        tmp.write(cookies_content)
+        tmp.close()
+        return YouTubeTranscriptApi(cookie_path=tmp.name)
+
+    return YouTubeTranscriptApi()
+
+
 def fetch_transcript(video_id: str) -> tuple[str, str]:
     """Fetch transcript using youtube-transcript-api 1.x."""
-    api = YouTubeTranscriptApi()
+    api = _make_api()
     try:
         try:
             transcript = api.fetch(video_id, languages=["en", "en-US", "en-GB"])

@@ -783,6 +783,7 @@
 <div class="modal-overlay" id="authModal">
   <div class="modal-box">
     <button class="modal-close" onclick="closeAuthModal()">✕</button>
+    <div id="modal-main-form">
     <div class="modal-tabs">
       <button class="modal-tab active" id="tabLogin" onclick="switchAuthTab('login')">Войти</button>
       <button class="modal-tab" id="tabRegister" onclick="switchAuthTab('register')">Регистрация</button>
@@ -795,8 +796,38 @@
       <label>Пароль</label>
       <input type="password" id="authPassword" placeholder="Минимум 6 символов" onkeydown="authKeydown(event)" />
     </div>
+    <div id="authForgotLink" style="text-align:right;margin-bottom:12px">
+      <button onclick="showForgotScreen()" style="background:none;border:none;color:var(--text-muted);font-size:0.82rem;cursor:pointer;text-decoration:underline">Забыли пароль?</button>
+    </div>
     <div class="auth-error" id="authError"></div>
     <button class="btn btn-primary w-full" id="btnAuthSubmit" onclick="submitAuth()">Войти</button>
+    </div><!-- end modal-main-form -->
+
+    <!-- Forgot password screen -->
+    <div id="forgotScreen" style="display:none">
+      <button onclick="hideForgotScreen()" style="background:none;border:none;color:var(--text-muted);font-size:0.82rem;cursor:pointer;margin-bottom:16px">← Назад</button>
+      <h3 style="margin-bottom:8px;font-size:1.1rem">Сброс пароля</h3>
+      <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:16px">Введи свой email — пришлём ссылку для сброса пароля.</p>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="text" id="forgotEmail" placeholder="you@example.com" onkeydown="if(event.key==='Enter')submitForgot()" />
+      </div>
+      <div class="auth-error" id="forgotError"></div>
+      <div id="forgotSuccess" style="display:none;color:var(--correct);font-size:0.85rem;margin-bottom:12px"></div>
+      <button class="btn btn-primary w-full" id="btnForgotSubmit" onclick="submitForgot()">Отправить письмо</button>
+    </div>
+
+    <!-- Reset password screen (opened via ?reset_token=...) -->
+    <div id="resetScreen" style="display:none">
+      <h3 style="margin-bottom:8px;font-size:1.1rem">Новый пароль</h3>
+      <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:16px">Введи новый пароль для своего аккаунта.</p>
+      <div class="form-group">
+        <label>Новый пароль</label>
+        <input type="password" id="resetPassword" placeholder="Минимум 6 символов" onkeydown="if(event.key==='Enter')submitReset()" />
+      </div>
+      <div class="auth-error" id="resetError"></div>
+      <button class="btn btn-primary w-full" id="btnResetSubmit" onclick="submitReset()">Сохранить пароль</button>
+    </div>
   </div>
 </div>
 
@@ -928,6 +959,86 @@ async function submitAuth() {
     if (document.getElementById('sec-vocab').classList.contains('active')) {
       renderVocabList();
     }
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function showForgotScreen() {
+  // Скрываем основную форму, показываем экран forgot
+  document.getElementById('modal-main-form').style.display = 'none';
+  document.getElementById('forgotScreen').style.display = 'block';
+  document.getElementById('forgotError').style.display = 'none';
+  document.getElementById('forgotSuccess').style.display = 'none';
+  document.getElementById('forgotEmail').value = '';
+  setTimeout(() => document.getElementById('forgotEmail').focus(), 50);
+}
+
+function hideForgotScreen() {
+  document.getElementById('modal-main-form').style.display = 'block';
+  document.getElementById('forgotScreen').style.display = 'none';
+}
+
+async function submitForgot() {
+  const email = document.getElementById('forgotEmail').value.trim();
+  const errEl = document.getElementById('forgotError');
+  const successEl = document.getElementById('forgotSuccess');
+  const btn = document.getElementById('btnForgotSubmit');
+
+  if (!email) { errEl.textContent = 'Введи email'; errEl.style.display = 'block'; return; }
+
+  btn.disabled = true;
+  errEl.style.display = 'none';
+
+  try {
+    await fetch(API_BASE + '/api/auth/forgot-password', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email}),
+    });
+    // Всегда показываем успех — не раскрываем есть ли аккаунт
+    successEl.textContent = '✓ Письмо отправлено! Проверь почту (и папку «Спам»).';
+    successEl.style.display = 'block';
+    btn.style.display = 'none';
+  } catch {
+    errEl.textContent = 'Ошибка сети. Попробуй позже.';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function submitReset() {
+  const password = document.getElementById('resetPassword').value;
+  const token = new URLSearchParams(window.location.search).get('reset_token');
+  const errEl = document.getElementById('resetError');
+  const btn = document.getElementById('btnResetSubmit');
+
+  if (!password) { errEl.textContent = 'Введи новый пароль'; errEl.style.display = 'block'; return; }
+
+  btn.disabled = true;
+  errEl.style.display = 'none';
+
+  try {
+    const res = await fetch(API_BASE + '/api/auth/reset-password', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({token, new_password: password}),
+    });
+    let data;
+    try { data = await res.json(); } catch { throw new Error('Ошибка сервера'); }
+    if (!res.ok) throw new Error(data.detail || 'Ошибка');
+
+    // Автологин прошёл на бэкенде, обновляем UI
+    currentUser = data;
+    updateAuthUI();
+    closeAuthModal();
+    // Убираем токен из URL
+    window.history.replaceState({}, '', window.location.pathname);
+    toast('Пароль изменён! Добро пожаловать 👋', 'success');
   } catch (e) {
     errEl.textContent = e.message;
     errEl.style.display = 'block';
@@ -1527,6 +1638,14 @@ function resetAll() {
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────────
+// Если в URL есть ?reset_token= — сразу открываем экран сброса пароля
+const resetTokenOnLoad = new URLSearchParams(window.location.search).get('reset_token');
+if (resetTokenOnLoad) {
+  document.getElementById('authModal').classList.add('open');
+  document.getElementById('modal-main-form').style.display = 'none';
+  document.getElementById('resetScreen').style.display = 'block';
+}
+
 checkAuth();
 renderRecent();
 </script>

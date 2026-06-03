@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import secrets
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -43,6 +44,14 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, nullable=False, index=True)
+    token = Column(String, unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
 
 
 class DictionaryItem(Base):
@@ -358,6 +367,107 @@ async def login(req: LoginRequest, response: Response, db: DBSession = Depends(g
 async def logout(response: Response):
     response.delete_cookie("access_token")
     return {"ok": True}
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+RESET_TOKEN_EXPIRE_HOURS = 1
+
+
+def send_reset_email(to_email: str, token: str) -> None:
+    """Отправляет письмо со ссылкой сброса пароля через Resend."""
+    base_url = os.getenv("APP_URL", "https://web-production-99930.up.railway.app")
+    reset_link = f"{base_url}?reset_token={token}"
+
+    httpx.post(
+        "https://api.resend.com/emails",
+        headers={"Authorization": f"Bearer {RESEND_API_KEY}"},
+        json={
+            "from": "onboarding@resend.dev",
+            "to": to_email,
+            "subject": "Сброс пароля — chunks_english",
+            "html": f"""
+            <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
+              <h2 style="margin-bottom:8px">Сброс пароля</h2>
+              <p style="color:#666;margin-bottom:24px">
+                Ты запросила сброс пароля для chunks_english.<br>
+                Ссылка действительна 1 час.
+              </p>
+              <a href="{reset_link}"
+                 style="display:inline-block;padding:12px 24px;background:#6c63ff;
+                        color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
+                Сбросить пароль
+              </a>
+              <p style="color:#999;font-size:12px;margin-top:24px">
+                Если ты не запрашивала сброс — просто проигнорируй это письмо.
+              </p>
+            </div>
+            """,
+        },
+        timeout=10,
+    )
+
+
+@app.post("/api/auth/forgot-password")
+async def forgot_password(req: ForgotPasswordRequest, db: DBSession = Depends(get_db)):
+    # Намеренно не сообщаем существует ли email — защита от перебора
+    user = db.query(User).filter(User.email == req.email.lower()).first()
+    if user and RESEND_API_KEY:
+        # Удаляем старые токены для этого email
+        db.query(PasswordResetToken).filter(
+            PasswordResetToken.email == req.email.lower()
+        ).delete()
+
+        token = secrets.token_urlsafe(32)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=RESET_TOKEN_EXPIRE_HOURS)
+        db.add(PasswordResetToken(email=req.email.lower(), token=token, expires_at=expires_at))
+        db.commit()
+
+        try:
+            send_reset_email(user.email, token)
+        except Exception as e:
+            print(f"Email send error: {e}")
+
+    return {"ok": True}  # всегда ок — не раскрываем наличие аккаунта
+
+
+@app.post("/api/auth/reset-password")
+async def reset_password(req: ResetPasswordRequest, response: Response, db: DBSession = Depends(get_db)):
+    if len(req.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Пароль должен быть не менее 6 символов")
+
+    reset = db.query(PasswordResetToken).filter(
+        PasswordResetToken.token == req.token
+    ).first()
+
+    if not reset:
+        raise HTTPException(status_code=400, detail="Ссылка недействительна")
+    if reset.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+        db.delete(reset)
+        db.commit()
+        raise HTTPException(status_code=400, detail="Ссылка истекла. Запроси новую.")
+
+    user = db.query(User).filter(User.email == reset.email).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Пользователь не найден")
+
+    user.password_hash = hash_password(req.new_password)
+    db.delete(reset)
+    db.commit()
+
+    # Автологин после сброса
+    token = create_token(user.id)
+    response.set_cookie(
+        "access_token", token,
+        httponly=True, max_age=TOKEN_EXPIRE_DAYS * 86400, samesite="lax",
+    )
+    return {"id": user.id, "email": user.email}
 
 
 @app.get("/api/auth/me")

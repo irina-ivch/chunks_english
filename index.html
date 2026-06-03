@@ -901,7 +901,8 @@ async function submitAuth() {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(body),
     });
-    const data = await res.json();
+    let data;
+    try { data = await res.json(); } catch { throw new Error(`Ошибка сервера (${res.status}). Проверь логи Railway.`); }
     if (!res.ok) throw new Error(data.detail || 'Ошибка');
 
     currentUser = data;

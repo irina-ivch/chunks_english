@@ -223,12 +223,13 @@ class AnalyzeRequest(BaseModel):
     level: str
 
 class ChunkItem(BaseModel):
+    model_config = {"populate_by_name": True}
     chunk: str
     type: str
     level: str
     original_sentence: str
     meaning_ru: str
-    register: str
+    register: str = ""
     why_useful: str
     similar_chunks: list[str]
 
@@ -243,11 +244,12 @@ class GenerateTheoryRequest(BaseModel):
     lesson_language: str = "ru"
 
 class ChunkTheory(BaseModel):
+    model_config = {"populate_by_name": True}
     chunk: str
     type: str
     level: str
     meaning_ru: str
-    register: str
+    register: str = ""
     why_useful: str
     similar_chunks: list[str]
     original_sentence: str

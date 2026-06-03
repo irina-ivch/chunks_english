@@ -3,12 +3,12 @@ import re
 import json
 from contextlib import asynccontextmanager
 
+import httpx
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
-from youtube_transcript_api import YouTubeTranscriptApi
-from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
 import anthropic
 
 load_dotenv()
@@ -203,43 +203,29 @@ async def health():
     return {"status": "ok"}
 
 
-def _make_api() -> YouTubeTranscriptApi:
-    """Create YouTubeTranscriptApi, passing cookies file if available."""
-    cookies_path = os.getenv("YOUTUBE_COOKIES_PATH")
-    if cookies_path and os.path.isfile(cookies_path):
-        return YouTubeTranscriptApi(cookie_path=cookies_path)
-
-    # Fallback: write inline cookie content from env var to a temp file
-    cookies_content = os.getenv("YOUTUBE_COOKIES")
-    if cookies_content:
-        import tempfile
-        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
-        tmp.write(cookies_content)
-        tmp.close()
-        return YouTubeTranscriptApi(cookie_path=tmp.name)
-
-    return YouTubeTranscriptApi()
-
-
 def fetch_transcript(video_id: str) -> tuple[str, str]:
-    """Fetch transcript using youtube-transcript-api 1.x."""
-    api = _make_api()
-    try:
-        try:
-            transcript = api.fetch(video_id, languages=["en", "en-US", "en-GB"])
-        except Exception:
-            transcript = api.fetch(video_id)
+    """Fetch transcript via Supadata API."""
+    api_key = os.getenv("SUPADATA_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="SUPADATA_API_KEY не настроен")
 
-        text = " ".join(s.text for s in transcript.snippets)
-        lang = getattr(transcript, "language_code", "en")
-        return text, lang
+    resp = httpx.get(
+        "https://api.supadata.ai/v1/youtube/transcript",
+        headers={"x-api-key": api_key},
+        params={"videoId": video_id, "text": "true"},
+        timeout=30,
+    )
 
-    except TranscriptsDisabled:
-        raise HTTPException(status_code=422, detail="Субтитры отключены для этого видео.")
-    except NoTranscriptFound:
+    if resp.status_code == 404:
         raise HTTPException(status_code=422, detail="Субтитры не найдены для этого видео.")
-    except Exception as e:
-        raise HTTPException(status_code=422, detail=f"Не удалось загрузить субтитры: {e}")
+    if resp.status_code != 200:
+        detail = resp.json().get("message", resp.text)
+        raise HTTPException(status_code=422, detail=f"Не удалось загрузить субтитры: {detail}")
+
+    data = resp.json()
+    text = data.get("content", "")
+    lang = data.get("lang", "en")
+    return text, lang
 
 
 @app.post("/api/transcript", response_model=TranscriptResponse)

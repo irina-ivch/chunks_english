@@ -2,23 +2,106 @@ import os
 import re
 import json
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 import httpx
-
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response, Request, Depends
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import anthropic
+from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy.orm import declarative_base, sessionmaker, Session as DBSession
+from sqlalchemy.sql import func
+from passlib.context import CryptContext
+from jose import jwt, JWTError
 
 load_dotenv()
 
+# ── Config ────────────────────────────────────────────────────────────────────
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 MODEL = "claude-sonnet-4-5"
+SECRET_KEY = os.getenv("SECRET_KEY", "please-change-this-in-production")
+ALGORITHM = "HS256"
+TOKEN_EXPIRE_DAYS = 30
+
+# ── Database ──────────────────────────────────────────────────────────────────
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./app.db")
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
 
 
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, nullable=False, index=True)
+    password_hash = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class DictionaryItem(Base):
+    __tablename__ = "dictionary_items"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    chunk = Column(String, nullable=False)
+    card_json = Column(Text, nullable=False)
+    video_id = Column(String, nullable=True)
+    added_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+# ── Auth helpers ──────────────────────────────────────────────────────────────
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+def verify_password(password: str, hashed: str) -> bool:
+    return pwd_context.verify(password, hashed)
+
+
+def create_token(user_id: int) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(days=TOKEN_EXPIRE_DAYS)
+    return jwt.encode({"sub": str(user_id), "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def get_current_user(request: Request, db: DBSession = Depends(get_db)) -> Optional[User]:
+    token = request.cookies.get("access_token")
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = int(payload["sub"])
+    except (JWTError, KeyError, ValueError):
+        return None
+    return db.query(User).filter(User.id == user_id).first()
+
+
+def require_user(user: Optional[User] = Depends(get_current_user)) -> User:
+    if not user:
+        raise HTTPException(status_code=401, detail="Необходима авторизация")
+    return user
+
+
+# ── App ───────────────────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
     if not ANTHROPIC_API_KEY:
         print("WARNING: ANTHROPIC_API_KEY not set")
     yield
@@ -48,7 +131,6 @@ def extract_video_id(url: str) -> str:
 
 
 def strip_json_fences(raw: str) -> str:
-    """Remove markdown code fences that Claude sometimes wraps JSON in."""
     raw = raw.strip()
     raw = re.sub(r"^```(?:json)?\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw)
@@ -138,15 +220,15 @@ class TranscriptResponse(BaseModel):
 
 class AnalyzeRequest(BaseModel):
     transcript: str
-    level: str  # A1-C2
+    level: str
 
 class ChunkItem(BaseModel):
     chunk: str
-    type: str        # fixed_expression | collocation | phrasal_verb | discourse_marker | idiom | semi_fixed
-    level: str       # B1-C2
+    type: str
+    level: str
     original_sentence: str
     meaning_ru: str
-    register: str    # formal | neutral | informal
+    register: str
     why_useful: str
     similar_chunks: list[str]
 
@@ -158,7 +240,7 @@ class GenerateTheoryRequest(BaseModel):
     level: str
     chunks: list[ChunkItem]
     video_id: str
-    lesson_language: str = "ru"  # ru | en
+    lesson_language: str = "ru"
 
 class ChunkTheory(BaseModel):
     chunk: str
@@ -190,6 +272,20 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
 
+# ── Auth models ───────────────────────────────────────────────────────────────
+
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+    session_words: list[dict] = []
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class SyncWordsRequest(BaseModel):
+    words: list[dict]
+
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
@@ -202,6 +298,137 @@ async def index():
 async def health():
     return {"status": "ok"}
 
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
+
+@app.post("/api/auth/register")
+async def register(req: RegisterRequest, response: Response, db: DBSession = Depends(get_db)):
+    if not req.email or "@" not in req.email:
+        raise HTTPException(status_code=400, detail="Некорректный email")
+    if len(req.password) < 6:
+        raise HTTPException(status_code=400, detail="Пароль должен быть не менее 6 символов")
+    if db.query(User).filter(User.email == req.email.lower()).first():
+        raise HTTPException(status_code=400, detail="Email уже зарегистрирован")
+
+    user = User(email=req.email.lower(), password_hash=hash_password(req.password))
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    # Migrate session words
+    for word in req.session_words:
+        chunk = word.get("chunk")
+        if chunk and not db.query(DictionaryItem).filter(
+            DictionaryItem.user_id == user.id,
+            DictionaryItem.chunk == chunk,
+        ).first():
+            db.add(DictionaryItem(
+                user_id=user.id,
+                chunk=chunk,
+                card_json=json.dumps(word, ensure_ascii=False),
+                video_id=word.get("videoId"),
+            ))
+    db.commit()
+
+    token = create_token(user.id)
+    response.set_cookie(
+        "access_token", token,
+        httponly=True, max_age=TOKEN_EXPIRE_DAYS * 86400, samesite="lax",
+    )
+    return {"id": user.id, "email": user.email}
+
+
+@app.post("/api/auth/login")
+async def login(req: LoginRequest, response: Response, db: DBSession = Depends(get_db)):
+    user = db.query(User).filter(User.email == req.email.lower()).first()
+    if not user or not verify_password(req.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Неверный email или пароль")
+
+    token = create_token(user.id)
+    response.set_cookie(
+        "access_token", token,
+        httponly=True, max_age=TOKEN_EXPIRE_DAYS * 86400, samesite="lax",
+    )
+    return {"id": user.id, "email": user.email}
+
+
+@app.post("/api/auth/logout")
+async def logout(response: Response):
+    response.delete_cookie("access_token")
+    return {"ok": True}
+
+
+@app.get("/api/auth/me")
+async def me(user: Optional[User] = Depends(get_current_user)):
+    if not user:
+        return {"user": None}
+    return {"user": {"id": user.id, "email": user.email}}
+
+
+# ── Dictionary ────────────────────────────────────────────────────────────────
+
+@app.get("/api/dictionary")
+async def get_dictionary(user: User = Depends(require_user), db: DBSession = Depends(get_db)):
+    items = (
+        db.query(DictionaryItem)
+        .filter(DictionaryItem.user_id == user.id)
+        .order_by(DictionaryItem.added_at.desc())
+        .all()
+    )
+    result = []
+    for item in items:
+        try:
+            card = json.loads(item.card_json)
+        except Exception:
+            card = {"chunk": item.chunk}
+        card["id"] = item.id
+        card["addedAt"] = int(item.added_at.timestamp() * 1000) if item.added_at else 0
+        result.append(card)
+    return result
+
+
+@app.post("/api/dictionary/sync")
+async def sync_dictionary(
+    req: SyncWordsRequest,
+    user: User = Depends(require_user),
+    db: DBSession = Depends(get_db),
+):
+    added = 0
+    for word in req.words:
+        chunk = word.get("chunk")
+        if chunk and not db.query(DictionaryItem).filter(
+            DictionaryItem.user_id == user.id,
+            DictionaryItem.chunk == chunk,
+        ).first():
+            db.add(DictionaryItem(
+                user_id=user.id,
+                chunk=chunk,
+                card_json=json.dumps(word, ensure_ascii=False),
+                video_id=word.get("videoId"),
+            ))
+            added += 1
+    db.commit()
+    return {"added": added}
+
+
+@app.delete("/api/dictionary/{item_id}")
+async def delete_dictionary_item(
+    item_id: int,
+    user: User = Depends(require_user),
+    db: DBSession = Depends(get_db),
+):
+    item = db.query(DictionaryItem).filter(
+        DictionaryItem.id == item_id,
+        DictionaryItem.user_id == user.id,
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Не найдено")
+    db.delete(item)
+    db.commit()
+    return {"ok": True}
+
+
+# ── Transcript ────────────────────────────────────────────────────────────────
 
 def fetch_transcript(video_id: str) -> tuple[str, str]:
     """Fetch transcript via Supadata API."""

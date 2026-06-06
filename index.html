@@ -1196,7 +1196,7 @@ async function loadVideo() {
 }
 
 async function analyzeChunks() {
-  const wordGrid = document.getElementById('wordGrid');
+  const wordGrid = document.getElementById('transcriptView');
   wordGrid.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted)"><span class="spinner"></span><br><br>Ищу полезные выражения и чанки...</div>';
 
   const res = await api('/api/analyze', {

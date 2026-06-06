@@ -1328,8 +1328,8 @@ document.getElementById('transcriptView').addEventListener('mouseup', () => {
   if (!view.contains(sel.anchorNode)) { addChunkBtn.style.display = 'none'; return; }
   const range = sel.getRangeAt(0).getBoundingClientRect();
   addChunkBtn.style.display = 'block';
-  addChunkBtn.style.left = `${range.left + range.width / 2 - addChunkBtn.offsetWidth / 2}px`;
-  addChunkBtn.style.top = `${range.top - 38 + window.scrollY}px`;
+  addChunkBtn.style.left = `${range.left + range.width / 2 - 60}px`;
+  addChunkBtn.style.top = `${range.top - 38}px`;
   addChunkBtn.dataset.text = text;
 });
 

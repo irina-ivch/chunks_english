@@ -202,12 +202,6 @@
   .transcript-view { font-size: 0.95rem; line-height: 1.9; color: var(--text); max-height: 60vh; overflow-y: auto; padding: 4px 2px; }
   .chunk-highlight { background: rgba(123,97,255,0.18); border-radius: 4px; padding: 1px 3px; cursor: pointer; position: relative; white-space: nowrap; display: inline-block; }
   .chunk-highlight.selected { background: rgba(0,200,130,0.25); outline: 1.5px solid var(--accent3); }
-  .chunk-q-btn { font-size: 0.65rem; vertical-align: super; background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0 1px; line-height: 1; }
-  .chunk-q-btn:hover { color: var(--accent); }
-  .chunk-popup { position: fixed; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; z-index: 1000; white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,0.3); pointer-events: none; }
-  .chunk-popup.hidden { visibility: hidden; opacity: 0; }
-  .chunk-popup .cp-word { font-weight: 700; font-size: 0.9rem; }
-  .chunk-popup .cp-trans { color: var(--text-muted); font-size: 0.8rem; margin-top: 2px; }
 
   .select-controls { display: flex; gap: 8px; margin-bottom: 14px; align-items: center; }
   .select-controls span { color: var(--text-muted); font-size: 0.85rem; margin-left: auto; }
@@ -1260,47 +1254,19 @@ function renderChunks() {
   const html = state.transcript.replace(regex, match => {
     const idx = chunkMap[match.toLowerCase()];
     const c = state.chunks[idx];
-    return `<span class="chunk-highlight" data-idx="${idx}"><span class="ch-text">${esc(match)}</span><button class="chunk-q-btn" data-idx="${idx}">?</button><div class="chunk-popup hidden"><div class="cp-word">${esc(c.chunk)}</div><div class="cp-trans">${esc(c.meaning_ru)}</div></div></span>`;
+    return `<span class="chunk-highlight" data-idx="${idx}">${esc(match)}</span>`;
   });
 
   view.innerHTML = html;
 
   // Click on highlight span = toggle selection
   view.querySelectorAll('.chunk-highlight').forEach(span => {
-    span.addEventListener('click', e => {
-      if (e.target.classList.contains('chunk-q-btn')) return;
-      toggleChunk(parseInt(span.dataset.idx));
-    });
-  });
-
-  // Click on "?" = show/hide popup
-  view.querySelectorAll('.chunk-q-btn').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
-      const popup = btn.nextElementSibling;
-      const isHidden = popup.classList.contains('hidden');
-      document.querySelectorAll('.chunk-popup').forEach(p => { p.classList.add('hidden'); p.style.left = ''; p.style.transform = ''; });
-      if (isHidden) {
-        const btnRect = btn.getBoundingClientRect();
-        popup.style.left = btnRect.left + 'px';
-        popup.style.top = (btnRect.top - 8) + 'px';
-        popup.style.transform = 'translateY(-100%)';
-        popup.classList.remove('hidden');
-        const popRect = popup.getBoundingClientRect();
-        if (popRect.right > window.innerWidth - 8) {
-          popup.style.left = (window.innerWidth - 8 - popRect.width) + 'px';
-        }
-      }
-    });
+    span.addEventListener('click', () => toggleChunk(parseInt(span.dataset.idx)));
   });
 
   updateSelectedCount();
 }
 
-// Close all popups on outside click
-document.addEventListener('click', () => {
-  document.querySelectorAll('.chunk-popup').forEach(p => p.classList.add('hidden'));
-});
 
 function toggleChunk(i) {
   document.querySelectorAll(`.chunk-highlight[data-idx="${i}"]`).forEach(el => el.classList.toggle('selected'));

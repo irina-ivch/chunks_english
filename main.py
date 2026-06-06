@@ -551,7 +551,7 @@ def fetch_transcript(video_id: str) -> tuple[str, str]:
     resp = httpx.get(
         "https://api.supadata.ai/v1/youtube/transcript",
         headers={"x-api-key": api_key},
-        params={"videoId": video_id, "text": "true"},
+        params={"videoId": video_id, "text": "true", "lang": "en"},
         timeout=30,
     )
 
@@ -571,6 +571,12 @@ def fetch_transcript(video_id: str) -> tuple[str, str]:
 async def get_transcript(req: TranscriptRequest):
     video_id = extract_video_id(req.url)
     text, lang_code = fetch_transcript(video_id)
+
+    if not lang_code.startswith("en"):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Субтитры этого видео не на английском (язык: {lang_code}). Приложение работает только с англоязычными видео.",
+        )
 
     words = text.split()
     if len(words) > 6000:

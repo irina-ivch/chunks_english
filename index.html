@@ -1279,8 +1279,20 @@ function renderChunks() {
       e.stopPropagation();
       const popup = btn.nextElementSibling;
       const isHidden = popup.classList.contains('hidden');
-      document.querySelectorAll('.chunk-popup').forEach(p => p.classList.add('hidden'));
-      if (isHidden) popup.classList.remove('hidden');
+      document.querySelectorAll('.chunk-popup').forEach(p => { p.classList.add('hidden'); p.style.left = ''; p.style.transform = ''; });
+      if (isHidden) {
+        popup.classList.remove('hidden');
+        // Clamp popup so it doesn't overflow the viewport
+        const rect = popup.getBoundingClientRect();
+        if (rect.left < 8) {
+          popup.style.left = '0';
+          popup.style.transform = `translateX(${8 - rect.left}px)`;
+        } else if (rect.right > window.innerWidth - 8) {
+          popup.style.left = 'auto';
+          popup.style.right = '0';
+          popup.style.transform = 'none';
+        }
+      }
     });
   });
 

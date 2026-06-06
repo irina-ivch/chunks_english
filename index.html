@@ -205,7 +205,7 @@
   .chunk-q-btn { font-size: 0.65rem; vertical-align: super; background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0 1px; line-height: 1; }
   .chunk-q-btn:hover { color: var(--accent); }
   .chunk-popup { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; z-index: 100; white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,0.3); pointer-events: none; }
-  .chunk-popup.hidden { display: none; }
+  .chunk-popup.hidden { visibility: hidden; opacity: 0; }
   .chunk-popup .cp-word { font-weight: 700; font-size: 0.9rem; }
   .chunk-popup .cp-trans { color: var(--text-muted); font-size: 0.8rem; margin-top: 2px; }
 
@@ -1281,17 +1281,20 @@ function renderChunks() {
       const isHidden = popup.classList.contains('hidden');
       document.querySelectorAll('.chunk-popup').forEach(p => { p.classList.add('hidden'); p.style.left = ''; p.style.transform = ''; });
       if (isHidden) {
-        popup.classList.remove('hidden');
-        // Clamp popup so it doesn't overflow the viewport
+        // Measure while still hidden (visibility:hidden keeps layout)
         const rect = popup.getBoundingClientRect();
+        popup.style.left = '';
+        popup.style.right = '';
+        popup.style.transform = 'translateX(-50%)';
         if (rect.left < 8) {
           popup.style.left = '0';
-          popup.style.transform = `translateX(${8 - rect.left}px)`;
+          popup.style.transform = `translateX(${Math.max(0, 8 - rect.left)}px)`;
         } else if (rect.right > window.innerWidth - 8) {
           popup.style.left = 'auto';
           popup.style.right = '0';
           popup.style.transform = 'none';
         }
+        popup.classList.remove('hidden');
       }
     });
   });

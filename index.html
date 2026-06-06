@@ -1320,17 +1320,23 @@ function removeCustomChunk(i) {
 // ── Custom chunk selection from transcript text ────────────────────────────────
 const addChunkBtn = document.getElementById('addChunkBtn');
 
-document.getElementById('transcriptView').addEventListener('mouseup', () => {
-  const sel = window.getSelection();
-  const text = sel.toString().trim();
-  if (!text || text.length < 2 || text.length > 80) { addChunkBtn.style.display = 'none'; return; }
-  const view = document.getElementById('transcriptView');
-  if (!view.contains(sel.anchorNode)) { addChunkBtn.style.display = 'none'; return; }
-  const range = sel.getRangeAt(0).getBoundingClientRect();
-  addChunkBtn.style.display = 'block';
-  addChunkBtn.style.left = `${range.left + range.width / 2 - 60}px`;
-  addChunkBtn.style.top = `${range.top - 38}px`;
-  addChunkBtn.dataset.text = text;
+document.addEventListener('mouseup', (e) => {
+  if (e.target === addChunkBtn) return;
+  setTimeout(() => {
+    const sel = window.getSelection();
+    const text = sel && sel.toString().trim();
+    if (!text || text.length < 2 || text.length > 80) { addChunkBtn.style.display = 'none'; return; }
+    const view = document.getElementById('transcriptView');
+    if (!view) { addChunkBtn.style.display = 'none'; return; }
+    // Check if selection is inside transcript view
+    const node = sel.anchorNode;
+    if (!view.contains(node) && !view.contains(sel.focusNode)) { addChunkBtn.style.display = 'none'; return; }
+    const range = sel.getRangeAt(0).getBoundingClientRect();
+    addChunkBtn.style.display = 'block';
+    addChunkBtn.style.left = `${Math.max(8, range.left + range.width / 2 - 60)}px`;
+    addChunkBtn.style.top = `${range.top - 38}px`;
+    addChunkBtn.dataset.text = text;
+  }, 10);
 });
 
 addChunkBtn.addEventListener('click', () => {

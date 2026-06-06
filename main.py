@@ -22,6 +22,7 @@ load_dotenv()
 
 # ── Config ────────────────────────────────────────────────────────────────────
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+GOOGLE_TTS_API_KEY = os.getenv("GOOGLE_TTS_API_KEY")
 MODEL = "claude-sonnet-4-5"
 SECRET_KEY = os.getenv("SECRET_KEY", "please-change-this-in-production")
 ALGORITHM = "HS256"
@@ -782,3 +783,27 @@ async def chat(req: ChatRequest):
     )
 
     return ChatResponse(reply=message.content[0].text)
+
+
+class SpeakRequest(BaseModel):
+    text: str
+
+
+@app.post("/api/speak")
+async def speak(req: SpeakRequest):
+    import base64
+    if not GOOGLE_TTS_API_KEY:
+        raise HTTPException(status_code=500, detail="GOOGLE_TTS_API_KEY не настроен")
+    resp = httpx.post(
+        f"https://texttospeech.googleapis.com/v1/text:synthesize?key={GOOGLE_TTS_API_KEY}",
+        json={
+            "input": {"text": req.text},
+            "voice": {"languageCode": "en-US", "name": "en-US-Neural2-F"},
+            "audioConfig": {"audioEncoding": "MP3", "speakingRate": 0.9},
+        },
+        timeout=10,
+    )
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail="Google TTS error")
+    audio_bytes = base64.b64decode(resp.json()["audioContent"])
+    return Response(content=audio_bytes, media_type="audio/mpeg")

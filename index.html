@@ -1208,12 +1208,14 @@ async function analyzeChunks() {
 }
 
 function speakChunk(text) {
-  if (!window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const utt = new SpeechSynthesisUtterance(text);
-  utt.lang = 'en-US';
-  utt.rate = 0.9;
-  window.speechSynthesis.speak(utt);
+  fetch('/api/speak', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({text})
+  })
+  .then(r => r.blob())
+  .then(blob => new Audio(URL.createObjectURL(blob)).play())
+  .catch(() => {});
 }
 
 // ── Step 2: Chunks ─────────────────────────────────────────────────────────────

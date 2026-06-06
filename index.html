@@ -197,6 +197,8 @@
   .word-card .wc-trans { color: var(--text-muted); font-size: 0.82rem; }
   .word-card .wc-chunk { color: var(--accent); font-size: 0.78rem; margin-top: 4px; font-style: italic; }
   .word-card .wc-example { color: var(--text-muted); font-size: 0.78rem; margin-top: 6px; line-height: 1.4; }
+  .speak-btn { background: none; border: none; cursor: pointer; font-size: 1rem; padding: 0 4px; opacity: 0.55; transition: opacity 0.15s; line-height: 1; vertical-align: middle; }
+  .speak-btn:hover { opacity: 1; }
 
   .select-controls { display: flex; gap: 8px; margin-bottom: 14px; align-items: center; }
   .select-controls span { color: var(--text-muted); font-size: 0.85rem; margin-left: auto; }
@@ -1205,6 +1207,15 @@ async function analyzeChunks() {
   renderChunks();
 }
 
+function speakChunk(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = 'en-US';
+  utt.rate = 0.9;
+  window.speechSynthesis.speak(utt);
+}
+
 // ── Step 2: Chunks ─────────────────────────────────────────────────────────────
 const TYPE_LABELS = {
   fixed_expression: 'Выражение',
@@ -1229,7 +1240,7 @@ function renderChunks() {
     card.dataset.idx = i;
     card.innerHTML = `
       <div class="wc-check">✓</div>
-      <div class="wc-word">${esc(c.chunk)} <span class="level-badge level-${c.level}">${c.level}</span></div>
+      <div class="wc-word">${esc(c.chunk)} <span class="level-badge level-${c.level}">${c.level}</span><button class="speak-btn" onclick="event.stopPropagation();speakChunk('${esc(c.chunk)}')">🔊</button></div>
       <div class="wc-trans">${esc(c.meaning_ru)}</div>
       <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
         <span style="font-size:0.72rem;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:2px 7px;color:var(--text-muted)">${esc(TYPE_LABELS[c.type] || c.type)}</span>
@@ -1311,6 +1322,7 @@ function renderTheory(data) {
     <div class="theory-word">
       <div class="tw-header">
         <span class="tw-word">${esc(c.chunk)}</span>
+        <button class="speak-btn" onclick="speakChunk('${esc(c.chunk)}')">🔊</button>
         <span class="level-badge level-${c.level}">${c.level}</span>
         <span class="tw-translation">${esc(c.meaning_ru)}</span>
       </div>

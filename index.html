@@ -202,12 +202,9 @@
   .transcript-view { font-size: 0.95rem; line-height: 1.9; color: var(--text); max-height: 60vh; overflow-y: auto; padding: 4px 2px; }
   .chunk-highlight { background: rgba(123,97,255,0.18); border-radius: 4px; padding: 1px 3px; cursor: pointer; position: relative; white-space: nowrap; display: inline-block; }
   .chunk-highlight.selected { background: rgba(0,200,130,0.25); outline: 1.5px solid var(--accent3); }
+  .chunk-highlight.custom { background: rgba(255,180,0,0.2); outline: 1.5px solid rgba(255,180,0,0.6); }
   #addChunkBtn { position: fixed; z-index: 1000; display: none; background: var(--accent3); color: var(--bg); border: none; border-radius: 6px; padding: 5px 10px; font-size: 0.8rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.3); white-space: nowrap; }
   #addChunkBtn:hover { opacity: 0.9; }
-  .custom-chunks-area { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; min-height: 0; }
-  .custom-chunk-tag { display: inline-flex; align-items: center; gap: 5px; background: rgba(0,200,130,0.12); border: 1px solid var(--accent3); border-radius: 20px; padding: 3px 10px; font-size: 0.82rem; color: var(--text); }
-  .custom-chunk-tag button { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 0.9rem; padding: 0; line-height: 1; }
-  .custom-chunk-tag button:hover { color: var(--accent2); }
 
   .select-controls { display: flex; gap: 8px; margin-bottom: 14px; align-items: center; }
   .select-controls span { color: var(--text-muted); font-size: 0.85rem; margin-left: auto; }
@@ -699,7 +696,6 @@
         <span id="selectedCount">0 выбрано</span>
       </div>
       <div id="transcriptView" class="transcript-view"></div>
-      <div id="customChunksArea" class="custom-chunks-area"></div>
     </div>
     <div style="display:flex; gap:10px; justify-content:space-between; align-items:center; margin-top:16px">
       <div style="display:flex; align-items:center; gap:10px">
@@ -1078,7 +1074,6 @@ const state = {
   lessonLanguage: 'ru',
   chunks: [],
   selectedChunks: [],
-  customChunks: [],
   videoTopic: '',
   freeChatMessages: [],
   systemPrompt: '',
@@ -1215,10 +1210,8 @@ async function analyzeChunks() {
   });
 
   state.chunks = res.chunks;
-  state.customChunks = [];
   saveSession(state.videoId, { chunks: state.chunks, level: state.level });
   renderChunks();
-  renderCustomChunks();
 }
 
 function speakChunk(text) {
@@ -1294,28 +1287,11 @@ function selectNone() {
 }
 
 function updateSelectedCount() {
-  const idxSet = new Set([...document.querySelectorAll('.chunk-highlight.selected')].map(el => parseInt(el.dataset.idx)));
-  const recommended = [...idxSet].map(i => state.chunks[i]);
-  const n = idxSet.size + state.customChunks.length;
+  const idxSet = new Set([...document.querySelectorAll('.chunk-highlight.selected')].map(el => parseInt(el.dataset.idx)).filter(i => !isNaN(i)));
+  const n = idxSet.size;
   document.getElementById('selectedCount').textContent = `${n} выбрано`;
   document.getElementById('btnLesson').disabled = n === 0;
-  state.selectedChunks = [...recommended, ...state.customChunks];
-}
-
-function renderCustomChunks() {
-  const area = document.getElementById('customChunksArea');
-  area.innerHTML = state.customChunks.map((c, i) => `
-    <span class="custom-chunk-tag">
-      ${esc(c.chunk)}
-      <button onclick="removeCustomChunk(${i})" title="Убрать">✕</button>
-    </span>
-  `).join('');
-}
-
-function removeCustomChunk(i) {
-  state.customChunks.splice(i, 1);
-  renderCustomChunks();
-  updateSelectedCount();
+  state.selectedChunks = [...idxSet].map(i => state.chunks[i]);
 }
 
 // ── Custom chunk selection from transcript text ────────────────────────────────
@@ -1345,12 +1321,27 @@ document.addEventListener('mouseup', (e) => {
 addChunkBtn.addEventListener('click', () => {
   const text = addChunkBtn.dataset.text;
   if (!text) return;
-  const alreadyExists = state.customChunks.some(c => c.chunk.toLowerCase() === text.toLowerCase())
-    || state.chunks.some(c => c.chunk.toLowerCase() === text.toLowerCase());
+  const alreadyExists = state.chunks.some(c => c.chunk.toLowerCase() === text.toLowerCase());
   if (!alreadyExists) {
-    state.customChunks.push({ chunk: text, meaning_ru: '', level: 'custom', type: 'fixed_expression', register: 'neutral', original_sentence: '', why_useful: '', similar_chunks: [], other_examples: [] });
-    renderCustomChunks();
-    updateSelectedCount();
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      try {
+        const range = sel.getRangeAt(0);
+        const idx = state.chunks.length;
+        state.chunks.push({ chunk: text, meaning_ru: '', level: 'custom', type: 'fixed_expression', register: 'neutral', original_sentence: '', why_useful: '', similar_chunks: [], other_examples: [] });
+        const span = document.createElement('span');
+        span.className = 'chunk-highlight selected custom';
+        span.dataset.idx = idx;
+        range.surroundContents(span);
+        span.addEventListener('click', () => {
+          span.classList.toggle('selected');
+          updateSelectedCount();
+        });
+        updateSelectedCount();
+      } catch(e) {
+        // selection crosses element boundaries — ignore
+      }
+    }
   }
   addChunkBtn.style.display = 'none';
   window.getSelection().removeAllRanges();

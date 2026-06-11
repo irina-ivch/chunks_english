@@ -592,11 +592,11 @@ async def analyze_chunks(req: AnalyzeRequest):
 
     word_count = len(req.transcript.split())
     if word_count < 1500:
-        qty = "5–10"
-    elif word_count < 5000:
         qty = "10–20"
+    elif word_count < 5000:
+        qty = "20–40"
     else:
-        qty = "15–20"
+        qty = "40–60"
 
     prompt = f"""You are a lexical chunk extraction expert for an English learning app called chunks_english.
 
@@ -655,7 +655,7 @@ Register: formal | neutral | informal
 Extract {qty} chunks. Prioritise transferability over quantity.
 
 ## Transcript:
-{req.transcript[:4000]}
+{req.transcript}
 """
 
     message = client.messages.create(

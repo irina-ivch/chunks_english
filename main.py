@@ -661,7 +661,7 @@ IMPORTANT: Distribute your extraction evenly across the ENTIRE transcript — be
 
     message = client.messages.create(
         model=MODEL,
-        max_tokens=4096,
+        max_tokens=8000,
         messages=[{"role": "user", "content": prompt}],
     )
 

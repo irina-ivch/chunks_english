@@ -653,6 +653,7 @@ Types: fixed_expression | collocation | phrasal_verb | discourse_marker | idiom 
 Register: formal | neutral | informal
 
 Extract {qty} chunks. Prioritise transferability over quantity.
+IMPORTANT: Distribute your extraction evenly across the ENTIRE transcript — beginning, middle, and end. Do NOT concentrate only on the first part.
 
 ## Transcript:
 {req.transcript}
